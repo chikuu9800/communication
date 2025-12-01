@@ -15,6 +15,7 @@
 // export default connectMongoDB;
 
 // config/mongo.js
+// config/mongo.js
 import mongoose from "mongoose";
 
 const connectMongoDB = async () => {
@@ -22,16 +23,13 @@ const connectMongoDB = async () => {
     const mongoURI = process.env.MONGO_URI;
 
     if (!mongoURI) {
-      console.error("❌ ERROR: MONGO_URI is missing in Railway Variables");
+      console.error("❌ ERROR: MONGO_URI missing in environment variables");
       process.exit(1);
     }
 
-    await mongoose.connect(mongoURI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
+    await mongoose.connect(mongoURI);
 
-    console.log("✅ Connected to MongoDB successfully!");
+    console.log("✅ MongoDB connected successfully!");
   } catch (error) {
     console.error("❌ MongoDB connection error:", error.message);
     process.exit(1);
@@ -39,3 +37,4 @@ const connectMongoDB = async () => {
 };
 
 export default connectMongoDB;
+

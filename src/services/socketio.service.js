@@ -92,6 +92,8 @@ export const setupSocketIO = async (server) => {
           user: socket.user.id,
           text: message.content || (savedAttachments.length ? "📎 Attachment" : ""),
           attachments: savedAttachments,
+          replyTo: message.replyTo || null,
+
         });
 
         // Update channel preview
@@ -115,10 +117,13 @@ export const setupSocketIO = async (server) => {
 
         await channel.save();
 
-        const populatedMsg = await Message.findById(newMessage._id).populate(
-          "user",
-          "name avatar"
-        );
+        const populatedMsg = await Message.findById(newMessage._id)
+          .populate("user", "name avatar")
+          .populate({
+            path: "replyTo",
+            populate: { path: "user", select: "name avatar" }
+          });
+
 
         const formattedMessage = {
           id: populatedMsg._id.toString(),
@@ -128,11 +133,25 @@ export const setupSocketIO = async (server) => {
             name: populatedMsg.user.name,
             avatar: populatedMsg.user.avatar?.url,
           },
-          content: populatedMsg.text,
-          attachments: savedAttachments,
+          content: populatedMsg.text,   // <-- correct
+          attachments: populatedMsg.attachments || [],
           timestamp: populatedMsg.createdAt.toISOString(),
           status: "sent",
+
+          replyTo: populatedMsg.replyTo
+            ? {
+              id: populatedMsg.replyTo._id.toString(),
+              content: populatedMsg.replyTo.text,  // <-- matches `content`
+              attachments: populatedMsg.replyTo.attachments || [],
+              sender: {
+                id: populatedMsg.replyTo.user._id.toString(),
+                name: populatedMsg.replyTo.user.name,
+                avatar: populatedMsg.replyTo.user.avatar?.url
+              }
+            }
+            : null,
         };
+
 
         io.to(message.channelId).emit("receiveMessage", formattedMessage);
 

@@ -10,6 +10,7 @@ const getAllowedOrigins = () => {
         "http://localhost:3000",
         "http://localhost:5173",
         "http://192.168.1.5:5173",
+        "https://spectacular-crostata-13dd13.netlify.app",
       ];
 };
 

@@ -157,7 +157,7 @@ export const sendMessage = async (req, res) => {
       forwardedFrom: forwardedFrom || null,
       attachments: savedAttachments,
     });
-    
+
 
     // 5. Update channel preview + unread counts
     channel.lastMessage = message.text;
@@ -243,7 +243,7 @@ export const fetchMessages = async (req, res) => {
       sender: {
         id: message.user._id.toString(),
         name: message.user.name,
-        avatar: message.user.avatar?.url,
+        avatar: message.user.avatar?.path,
       },
       content: message.text,
       timestamp: message.createdAt.toISOString(),
@@ -292,7 +292,7 @@ export const fetchMessages = async (req, res) => {
         users: populatedChannel.users.map(x => ({
           id: x._id.toString(),
           name: x.name,
-          avatar: x.avatar?.url,
+          avatar: x.avatar?.path,
         })),
         lastMessage: populatedChannel.lastMessage,
         lastMessageTime: populatedChannel.lastMessageTime?.toISOString(),
@@ -306,6 +306,119 @@ export const fetchMessages = async (req, res) => {
     return res.status(500).json({ error: "Failed to fetch messages" });
   }
 };
+
+// export const fetchMessages = async (req, res) => {
+//   try {
+//     const { channelId } = req.query;
+//     const userId = req.user.id;
+
+//     const channel = await Channel.findOne({ _id: channelId, users: userId });
+//     if (!channel)
+//       return res.status(403).json({ error: "User not authorized for this channel" });
+
+//     //-----------------------------------------
+//     // 1️⃣ Get all users in channel & fetch full user docs
+//     //-----------------------------------------
+//     const channelUsers = await User.find({
+//       _id: { $in: channel.users }
+//     }).select("name avatar");
+
+//     // Build map: userId → { name, avatarPath }
+//     const userMap = {};
+//     channelUsers.forEach(u => {
+//       userMap[u._id.toString()] = {
+//         name: u.name,
+//         avatar: u.avatar?.path || null,
+//       };
+//     });
+
+//     //-----------------------------------------
+//     // 2️⃣ Get messages
+//     //-----------------------------------------
+//     const messages = await Message.find({ channelId })
+//       .sort({ createdAt: 1 });
+
+//     const receipts = await MessageReadReceipt.find({
+//       userId,
+//       messageId: { $in: messages.map(m => m._id) },
+//     });
+
+//     //-----------------------------------------
+//     // 3️⃣ Build final messages with sender info pulled from userMap
+//     //-----------------------------------------
+//     const messagesWithStatus = messages.map(message => {
+//       const senderId = message.user.toString();
+//       const senderInfo = userMap[senderId] || {};
+
+//       return {
+//         id: message._id.toString(),
+//         channelId: message.channelId.toString(),
+
+//         sender: {
+//           id: senderId,
+//           name: senderInfo.name || "Unknown",
+//           avatar: senderInfo.avatar || null,    // 👈 ALWAYS CORRECT NOW
+//         },
+
+//         content: message.text,
+//         timestamp: message.createdAt.toISOString(),
+//         status: message.status,
+//         isCurrentUser: senderId === userId,
+
+//         replyTo: message.replyTo,
+//         forwardedFrom: message.forwardedFrom,
+
+//         attachments: message.attachments?.map(a => ({
+//           id: a._id?.toString() || Math.random().toString(36),
+//           type: a.fileType.startsWith("image/") ? "image" : "file",
+//           name: a.fileName,
+//           url: a.fileUrl,
+//           size: a.fileSize,
+//         })),
+
+//         seenBy: receipts
+//           .filter(r => r.messageId.toString() === message._id.toString())
+//           .map(r => r.userId.toString()),
+//       };
+//     });
+
+//     //-----------------------------------------
+//     // 4️⃣ Reset unread count
+//     //-----------------------------------------
+//     if (channel.unreadCounts instanceof Map)
+//       channel.unreadCounts.set(userId.toString(), 0);
+//     else
+//       channel.unreadCounts[userId] = 0;
+
+//     await channel.save();
+
+//     //-----------------------------------------
+//     // 5️⃣ Notify all channel users
+//     //-----------------------------------------
+//     const io = getIO();
+//     channelUsers.forEach(u => {
+//       const unread = getUnreadCount(channel.unreadCounts, u._id);
+//       io.to(u._id.toString()).emit("channelUpdated", {
+//         id: channel._id.toString(),
+//         name: channel.name,
+//         type: channel.type,
+//         users: channelUsers.map(x => ({
+//           id: x._id.toString(),
+//           name: x.name,
+//           avatar: x.avatar?.path || null,
+//         })),
+//         lastMessage: channel.lastMessage,
+//         lastMessageTime: channel.lastMessageTime?.toISOString(),
+//         unreadCount: unread,
+//       });
+//     });
+
+//     return res.json(messagesWithStatus);
+//   } catch (error) {
+//     console.error("Error fetching messages:", error);
+//     return res.status(500).json({ error: "Failed to fetch messages" });
+//   }
+// };
 
 export const markSeen = async (req, res) => {
   try {
@@ -479,9 +592,9 @@ export const forwardMessage = async (req, res) => {
       channelId: targetChannelId,
       user: userId,
       text: original.text,
-      replyTo: null,                               
-      forwardedFrom: original.user.name,           
-      attachments: original.attachments            
+      replyTo: null,
+      forwardedFrom: original.user.name,
+      attachments: original.attachments
     });
 
     // Socket emit

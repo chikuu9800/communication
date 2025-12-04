@@ -146,7 +146,7 @@ export const setupSocketIO = async (server) => {
               sender: {
                 id: populatedMsg.replyTo.user._id.toString(),
                 name: populatedMsg.replyTo.user.name,
-                avatar: populatedMsg.replyTo.user.avatar?.url
+                avatar: populatedMsg.replyTo.user.avatar?.path
               }
             }
             : null,
